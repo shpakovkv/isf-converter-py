@@ -1,0 +1,6 @@
+testfiles
+
+# IntellijIdea files
+*.iml
+.idea
+*.pyc
