@@ -5,7 +5,7 @@
 tektronix MDO and MSO series oscilloscopes to simple text csv files with ASCii data.
 
 Simple usage:
-python isfreader.py inputfile.isf > outpufile.csv
+python isfreader.py inputfile.isf > outputfile.csv
 
 
 Author: Konstantin Shpakov, august 2019.
