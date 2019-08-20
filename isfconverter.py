@@ -1,12 +1,24 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+"""This script adds command line interface (CLI) to the isfreader.py script.
+
+Now you may specify a directory with .isf binary files and the script wil convert all the files
+to csv format and save to a specified output directory.
+
+Simple usage:
+python isfconverter.py -f inputfile.isf -s outputfile.csv
+python isfconverter.py -d input-dir-path -o output-dir-path
+
+
+Author: Konstantin Shpakov, august 2019.
+"""
+
 from __future__ import print_function
 import os
 import sys
 import isfreader
 import argparse
-import numpy   # debug
 
 
 def get_parser():
@@ -109,7 +121,7 @@ def get_file_list(dir, ext='ISF'):
     file_list = [os.path.join(path, x) for x in os.listdir(path)
                  if os.path.isfile(os.path.join(path, x))
                  and (x.upper().endswith(ext.upper()))]
-    print("File list:{}".format(file_list)) # debug
+    print("File list:{}".format(file_list))  # debug
     file_list.sort()
     return file_list
 
@@ -122,9 +134,9 @@ def check_file_list(file_list):
 
     :return:  None
     """
-    print("file list = {}".format(file_list))
+    print("file list = {}".format(file_list))       # debug
     for idx, name in enumerate(file_list):
-        print("name = {}".format(name))
+        print("name = {}".format(name))             # debug
         assert os.path.isfile(name), "Cannot find file {} ".format(name)
         file_list[idx] = os.path.abspath(name)
 
@@ -139,7 +151,7 @@ def check_args(options):
     # input directory and files check
     if options.src_dir:
         options.src_dir = options.src_dir.strip()
-        print("New out dir: {}".format(options.src_dir)) # debug
+        print("New out dir: {}".format(options.src_dir))            # debug
         assert os.path.isdir(options.src_dir), \
             "Can not find directory {}".format(options.src_dir)
         options.files = get_file_list(options.src_dir)
@@ -191,7 +203,7 @@ def save_csv(filename, x, y, head, save_head=False, delimiter=",", precision=18)
     folder_path = os.path.dirname(filename)
     if folder_path and not os.path.isdir(folder_path):
         os.makedirs(folder_path)
-    print("Output file: {}".format(filename))
+    print("Output file: {}".format(filename))               # debug
     with open(filename, 'w') as fid:
         lines = []
         if save_head:
@@ -207,19 +219,19 @@ def main():
     parser = get_parser()
     args = parser.parse_args()
     check_args(args)
-    print(args)
-    print("==================================================")
+    print(args)                                                     # debug
+    print("==================================================")     # debug
     for filename in args.files:
         new_filename = filename[:]
         if filename.upper().endswith(".ISF"):
             new_filename = new_filename[:-4] + ".csv"
-        print("Processing file: {}".format(filename))
+        print("Processing file: {}".format(filename))                               # debug
         save_csv(new_filename, *isfreader.read_isf(filename), save_head=args.head)
-        print()
+        print()                                                                     # debug
 
 
 if __name__ == "__main__":
-    filename = "F:\\PROJECTS\\Python\\Converter_ISF\\isfread-py\\testfiles\\tek0000CH1.isf"
-    # x, y, head = isfreader.read_isf(filename)
+    # filename = "F:\\PROJECTS\\Python\\Converter_ISF\\isfread-py\\testfiles\\tek0000CH3.isf"
+    # # x, y, head = isfreader.read_isf(filename)
+    # numpy_save_csv(filename, *isfreader.read_isf(filename))
     main()
-
