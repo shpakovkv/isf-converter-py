@@ -206,7 +206,8 @@ def read_isf(filename):
         y_data = ((y_data - head["YOFF"]) * head["YMULT"]) + head["YZERO"]
 
         head["XSTOP"] = head["XZERO"] + head["XINCR"] * head["NR_PT"]       # last x data point (not included)
-        x_data = numpy.arange(head["XZERO"], head["XSTOP"], head["XINCR"], dtype=y_data.dtype)
+        # x_data = numpy.arange(head["XZERO"], head["XSTOP"], head["XINCR"], dtype=y_data.dtype)
+        x_data = numpy.linspace(head["XZERO"], head["XSTOP"] - head["XINCR"], num=y_data.size, dtype=y_data.dtype)
         return x_data, y_data, head
 
 
