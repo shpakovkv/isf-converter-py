@@ -20,6 +20,7 @@ import sys
 import isfreader
 import argparse
 
+VERBOSE = False
 
 def get_parser():
     """Returns final parser.
@@ -87,6 +88,7 @@ def get_file_params_parser():
         nargs='+',
         metavar='FILE',
         dest='output_file_names',
+        default=[],
         help='specify one or more (space separated) output file names \n'
              'after the flag. The number of the output file names \n'
              'must be equal to the number of the input file names.\n\n')
@@ -121,7 +123,6 @@ def get_file_list(dir, ext='ISF'):
     file_list = [os.path.join(path, x) for x in os.listdir(path)
                  if os.path.isfile(os.path.join(path, x))
                  and (x.upper().endswith(ext.upper()))]
-    print("File list:{}".format(file_list))  # debug
     file_list.sort()
     return file_list
 
@@ -134,9 +135,7 @@ def check_file_list(file_list):
 
     :return:  None
     """
-    print("file list = {}".format(file_list))       # debug
     for idx, name in enumerate(file_list):
-        print("name = {}".format(name))             # debug
         assert os.path.isfile(name), "Cannot find file {} ".format(name)
         file_list[idx] = os.path.abspath(name)
 
@@ -148,10 +147,13 @@ def check_args(options):
 
     options -- namespace with options
     """
+    global VERBOSE
+    if options.verbose:
+        VERBOSE = True
+
     # input directory and files check
     if options.src_dir:
         options.src_dir = options.src_dir.strip()
-        print("New out dir: {}".format(options.src_dir))            # debug
         assert os.path.isdir(options.src_dir), \
             "Can not find directory {}".format(options.src_dir)
         options.files = get_file_list(options.src_dir)
@@ -171,12 +173,16 @@ def check_args(options):
         assert n_in == n_out, ("The number of the output file names ({})"
                                " must be equal to the number of the input"
                                " file names ({}).".format(n_in, n_out))
-        if options.out_dir:
-            for idx, name in enumerate(options.output_file_names):
-                options.output_file_names[idx] = os.path.join(out_path, name)
-        else:
-            for idx, name in enumerate(options.output_file_names):
-                options.output_file_names[idx] = os.path.abspath(name)
+    else:
+        for idx, name in enumerate(options.files):
+            new_name = name[:]
+            if new_name.upper().endswith(".ISF"):
+                new_name = new_name[:-4] + ".csv"
+            if options.out_dir:
+                new_name = os.path.basename(new_name)
+                options.output_file_names.append(os.path.join(out_path, new_name))
+            else:
+                options.output_file_names.append(os.path.abspath(new_name))
 
 
 def save_csv(filename, x, y, head, save_head=False, delimiter=",", precision=18):
@@ -203,35 +209,34 @@ def save_csv(filename, x, y, head, save_head=False, delimiter=",", precision=18)
     folder_path = os.path.dirname(filename)
     if folder_path and not os.path.isdir(folder_path):
         os.makedirs(folder_path)
-    print("Output file: {}".format(filename))               # debug
+    if VERBOSE:
+        print("Output file: {}".format(filename))
     with open(filename, 'w') as fid:
         lines = []
         if save_head:
-            lines.append(head)
+            str_head = "; ".join(": ".join((str(val) for val in line)) for line in head.items())
+            lines.append(str_head)
         # add data
         for row in range(len(x)):
             s = delimiter.join([value_format % x[row], value_format % y[row]]) + "\n"
             lines.append(s)
+
         fid.writelines(lines)
+    if VERBOSE:
+        print("Saved.")
 
 
 def main():
     parser = get_parser()
     args = parser.parse_args()
     check_args(args)
-    print(args)                                                     # debug
-    print("==================================================")     # debug
-    for filename in args.files:
-        new_filename = filename[:]
-        if filename.upper().endswith(".ISF"):
-            new_filename = new_filename[:-4] + ".csv"
-        print("Processing file: {}".format(filename))                               # debug
-        save_csv(new_filename, *isfreader.read_isf(filename), save_head=args.head)
-        print()                                                                     # debug
+    for idx, filename in enumerate(args.files):
+        if VERBOSE:
+            print("Processing file: {}".format(filename))
+        save_csv(args.output_file_names[idx], *isfreader.read_isf(filename), save_head=args.head)
+        if VERBOSE:
+            print()
 
 
 if __name__ == "__main__":
-    # filename = "F:\\PROJECTS\\Python\\Converter_ISF\\isfread-py\\testfiles\\tek0000CH3.isf"
-    # # x, y, head = isfreader.read_isf(filename)
-    # numpy_save_csv(filename, *isfreader.read_isf(filename))
     main()
