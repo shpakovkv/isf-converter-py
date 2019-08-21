@@ -187,6 +187,10 @@ def check_args(options):
 
 def save_csv(filename, x, y, head, save_head=False, delimiter=",", precision=18):
     """Saves data to a CSV file.
+    Supports "Y" format (data curve is composed of x[i], y[i] pairs) and
+    "ENV" (envelop) format, when Y 1D-array consists of Ymin, Ymax pairs, and
+    minimum curve is composed of x[i], y[i * 2] pairs and
+    maximum curve is composed of x[i], y[i * 2 + 1] pairs
 
     :param x:          x_data array
     :param y:          y_data array
@@ -217,10 +221,14 @@ def save_csv(filename, x, y, head, save_head=False, delimiter=",", precision=18)
             str_head = "; ".join(": ".join((str(val) for val in line)) for line in head.items())
             lines.append(str_head)
         # add data
-        for row in range(len(x)):
-            s = delimiter.join([value_format % x[row], value_format % y[row]]) + "\n"
-            lines.append(s)
-
+        if head["PT_FMT"] == "Y":
+            for row in range(len(x)):
+                s = delimiter.join([value_format % x[row], value_format % y[row]]) + "\n"
+                lines.append(s)
+        elif head["PT_FMT"] == "ENV":  # Y 1D-array consists of Ymin, Ymax pairs
+            for row in range(len(x)):
+                s = delimiter.join([value_format % x[row], value_format % y[row * 2], value_format % y[row * 2 + 1]])
+                lines.append(s + "\n")
         fid.writelines(lines)
     if VERBOSE:
         print("Saved.")

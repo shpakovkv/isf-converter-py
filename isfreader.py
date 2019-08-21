@@ -180,6 +180,14 @@ def read_isf(filename):
     """Reads data from isf file and returns (x_array, y_array, header).
     Where x_array: numpy.ndarray with x axis points
     y_array: numpy.ndarray with y axis points
+
+    For "Y" data format, x_array.size == y_array.size
+    Each (x_array[i], y_array[i]) pair is the data point
+
+    For "ENV" data format (min/max pairs): x_array.size * 2 == y_array.size
+    Each y_array[i * 2] is the minimum value recorded by oscilloscope
+    and y_array[i * 2 + 1] is the maximum value recorded by oscilloscope
+
     header: dict with name-value pairs of the isf file data parameters
 
     :param filename:    the path/name of an isf file
@@ -192,8 +200,8 @@ def read_isf(filename):
         head, y_start, y_size = get_head(raw_data)
 
         # not all possible formats are supported yet
-        assert head["PT_FMT"] == "Y", "Envelope format (min/max pairs) is not supported yet."
-        assert head["ENCDG"] in ("BIN", "BINARY"), "ASCii data format is not supported yet."
+        assert head["PT_FMT"] in ("Y", "ENV"), "Unsupported data format '{}'.".format(head["PT_FMT"])
+        assert head["ENCDG"] in ("BIN", "BINARY"), "Unsupported data encoding '{}'.".format(head["ENCDG"])
 
         fid.seek(y_start)
         raw_data = fid.read(y_size)
@@ -207,7 +215,14 @@ def read_isf(filename):
 
         head["XSTOP"] = head["XZERO"] + head["XINCR"] * head["NR_PT"]       # last x data point (not included)
         # x_data = numpy.arange(head["XZERO"], head["XSTOP"], head["XINCR"], dtype=y_data.dtype)
-        x_data = numpy.linspace(head["XZERO"], head["XSTOP"] - head["XINCR"], num=y_data.size, dtype=y_data.dtype)
+        x_data = None
+        if head["PT_FMT"] == "Y":
+            x_data = numpy.linspace(head["XZERO"], head["XSTOP"] - head["XINCR"],
+                                    num=head["NR_PT"], dtype=y_data.dtype)
+
+        elif head["PT_FMT"] == "ENV":
+            x_data = numpy.linspace(head["XZERO"], head["XSTOP"] - head["XINCR"],
+                                    num=(head["NR_PT"] / 2), dtype=y_data.dtype)
         return x_data, y_data, head
 
 
@@ -227,8 +242,12 @@ def main():
     x_data, y_data, head = read_isf(sys.argv[1])
 
     # save
-    for val in zip(x_data, y_data):
-        print("{}, {}".format(val[0], val[1]))
+    if head["PT_FMT"] == "Y":
+        for val in zip(x_data, y_data):
+            print("{}, {}".format(val[0], val[1]))
+    elif head["PT_FMT"] == "ENV":
+        for idx in range(head["NR_PT"] / 2):
+            print("{}, {}, {}".format(x_data[idx], y_data[idx * 2], y_data[idx * 2 + 1]))
 
 
 if __name__ == "__main__":
