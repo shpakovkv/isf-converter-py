@@ -112,6 +112,8 @@ import re
 import numpy
 
 
+ENCODING = 'utf-8'
+
 fmt = {"MSB": ">",      # most significant byte first (big-endian)
        "LSB": "<",      # least significant byte first (little-endian)
        "RP": "u",       # unsigned integer
@@ -132,7 +134,7 @@ def get_head(raw_string):
     data_size = 0
 
     # gets (param_name, param_val) pairs:
-    param_iter = re.finditer(r'(?:[:;])([\w]+)(?:\s)(?:")?([^;"]+)', raw_string)
+    param_iter = re.finditer(r'(?:[:;])([\w]+)(?:\s)(?:")?([^;"]+)', raw_string.decode(ENCODING))
     for param in param_iter:
         name = param.groups()[0]
         if name != "CURVE":
