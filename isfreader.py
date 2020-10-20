@@ -111,8 +111,8 @@ import os
 import re
 import numpy
 
-
-ENCODING = 'utf-8'
+# ENCODING = 'utf-8'
+ENCODING = 'latin-1'
 
 fmt = {"MSB": ">",      # most significant byte first (big-endian)
        "LSB": "<",      # least significant byte first (little-endian)
@@ -135,6 +135,7 @@ def get_head(raw_string):
 
     # gets (param_name, param_val) pairs:
     param_iter = re.finditer(r'(?:[:;])([\w]+)(?:\s)(?:")?([^;"]+)', raw_string.decode(ENCODING))
+
     for param in param_iter:
         name = param.groups()[0]
         if name != "CURVE":
@@ -198,7 +199,7 @@ def read_isf(filename):
     assert os.path.isfile(filename), "Cannot find file {}".format(filename)
     raw_data = None
     with open(filename, "rb") as fid:
-        raw_data = fid.read(512)
+        raw_data = fid.read(1024)
         head, y_start, y_size = get_head(raw_data)
 
         # not all possible formats are supported yet
