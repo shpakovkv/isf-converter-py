@@ -232,19 +232,34 @@ def read_isf(filename):
 def main():
     """Reads input isf file and outputs (print) x,y data line by line
     Usage: python isfreader.py inpytfile.isf > outpufile.csv
-
+           python isfreader.py --head inpytfile.isf > outpufile.csv
     :return: None
     """
     import sys
 
+    print_head = False
+
     # check
     assert len(sys.argv) > 1, "Please specify file path/name."
-    assert len(sys.argv) == 2, "Too many input arguments!"
+
+    if sys.argv[1] == "-h" or sys.argv[1] == "--help":
+        print("Usage: python isfreader.py inpytfile.isf > outpufile.csv\n"
+              "       python isfreader.py --head inpytfile.isf > outpufile.csv")
+        return
+
+    if len(sys.argv) > 2:
+        assert len(sys.argv) == 3, "Too many input arguments!"
+        assert sys.argv[1] == "--head", "Unknown parameter {}".format(sys.argv[1])
+        print_head = True
 
     # read
     x_data, y_data, head = read_isf(sys.argv[1])
 
     # save
+    if print_head:
+        # TODO: check print with head
+        for line in head:
+            print(line)
     if head["PT_FMT"] == "Y":
         for val in zip(x_data, y_data):
             print("{}, {}".format(val[0], val[1]))
