@@ -5,7 +5,6 @@
 
 Now you may specify a directory with .isf binary files and the script wil convert all the files
 to csv format and save to a specified output directory.
-
 Simple usage:
 python isfconverter.py -f inputfile.isf -s outputfile.csv
 python isfconverter.py -d input-dir-path -o output-dir-path
@@ -29,14 +28,15 @@ def get_parser():
 
     epilog_words = ""
 
-    manual_words = ("python %(prog)s -f filename\n"
+    manual_words = ("python %(prog)s -f input_file.isf\n"
+                    "       python %(prog)s -f input_file.isf -s output_file.csv\n"
                     "       python %(prog)s -d path/to/dir\n"
                     "       python %(prog)s -d path/to/dir -o path/to/save\n"
                     "       python %(prog)s @file_with_options")
 
     parser = argparse.ArgumentParser(
         parents=[get_file_params_parser()],
-        prog='ISFConverter.py',
+        prog='isfconverter.py',
         description=dics_words, epilog=epilog_words, usage=manual_words,
         fromfile_prefix_chars='@',
         formatter_class=argparse.RawTextHelpFormatter)
@@ -223,11 +223,13 @@ def save_csv(filename, x, y, head, save_head=False, delimiter=",", precision=18)
         # add data
         if head["PT_FMT"] == "Y":
             for row in range(len(x)):
-                s = delimiter.join([value_format % x[row], value_format % y[row]]) + "\n"
+                # s = delimiter.join([value_format % x[row], value_format % y[row]]) + "\n"
+                s = delimiter.join([str(x[row]), str(y[row])]) + "\n"
                 lines.append(s)
         elif head["PT_FMT"] == "ENV":  # Y 1D-array consists of Ymin, Ymax pairs
             for row in range(len(x)):
-                s = delimiter.join([value_format % x[row], value_format % y[row * 2], value_format % y[row * 2 + 1]])
+                # s = delimiter.join([value_format % x[row], value_format % y[row * 2], value_format % y[row * 2 + 1]])
+                s = delimiter.join([str(x[row]), str(y[row * 2]), str(y[row * 2 + 1])])
                 lines.append(s + "\n")
         fid.writelines(lines)
     if VERBOSE:
@@ -235,6 +237,7 @@ def save_csv(filename, x, y, head, save_head=False, delimiter=",", precision=18)
 
 
 def main():
+
     parser = get_parser()
     args = parser.parse_args()
     check_args(args)
