@@ -21,6 +21,7 @@ import argparse
 
 VERBOSE = False
 
+
 def get_parser():
     """Returns final parser.
     """
@@ -221,7 +222,7 @@ def save_csv(filename, x, y, head, save_head=False, delimiter=",", precision=18)
             str_head = "; ".join(": ".join((str(val) for val in line)) for line in head.items())
             lines.append(str_head)
         # add data
-        if head["PT_FMT"] == "Y":
+        if head["PT_FMT"] in ("Y", "XY"):
             for row in range(len(x)):
                 # s = delimiter.join([value_format % x[row], value_format % y[row]]) + "\n"
                 s = delimiter.join([str(x[row]), str(y[row])]) + "\n"

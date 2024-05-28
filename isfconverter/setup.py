@@ -5,10 +5,10 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="isf-converter-py",
-    version="1.0",
+    version="2.0",
     author="Konstantin Shpakov",
     author_email="konstantine.shpakov@gmail.com",
-    description="ISF binary file reader module and ISF-CSV batch file conversion tool with CLI.",
+    description="ISF binary file reader module and ISF-CSV batch file conversion tool with CLI. The script can also be used to save numpy ndarray data in ISF files with new XY format.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/shpakovkv/isf-converter-py",
