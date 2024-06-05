@@ -239,20 +239,21 @@ def read_isf(filename):
         if head["PT_FMT"] == "Y":
             # all binary data is the sequence of Y-values
             head["XSTOP"] = head["XZERO"] + head["XINCR"] * head["NR_PT"]  # last x data point (not included)
-            x_data = np.linspace(head["XZERO"], head["XSTOP"] - head["XINCR"],
-                                 num=head["NR_PT"], dtype=numpy_type)
 
             raw_data = read_data_from_file(fid, data_start, data_size)
             y_data = convert_data_y(raw_data, head)
+            x_data = np.linspace(head["XZERO"], head["XSTOP"] - head["XINCR"],
+                                 num=head["NR_PT"], dtype=y_data.dtype)
+
 
         elif head["PT_FMT"] == "ENV":
             # binary data is the sequence of Ymin, Ymax pairs
             head["XSTOP"] = head["XZERO"] + head["XINCR"] * head["NR_PT"] // 2  # last x data point (not included)
-            x_data = np.linspace(head["XZERO"], head["XSTOP"] - head["XINCR"],
-                                 num=(head["NR_PT"] / 2), dtype=numpy_type)
 
             raw_data = read_data_from_file(fid, data_start, data_size)
             y_data = convert_data_y(raw_data, head)
+            x_data = np.linspace(head["XZERO"], head["XSTOP"] - head["XINCR"],
+                                 num=(head["NR_PT"] / 2), dtype=y_data.dtype)
 
         elif head["PT_FMT"] == "XY":
             # binary data consists of X-data part first and then Y-data part
@@ -332,8 +333,71 @@ def convert_data_x(raw_data, head):
     return x_data
 
 
+def equally_spaced_values(arr, chunk=10000, rtol=1e-05, atol=1e-08):
+    """
+    Check if values in array are equally spaced.
+
+    :param arr: 1-dimension array to check
+    :type arr: np.ndarray
+    :param chunk: the number of elements to be processed at a time
+    :type chunk: int
+    :param rtol: the relative tolerance parameter (see numpy.isclose docs).
+    :type rtol: float
+    :param atol: the absolute tolerance parameter  (see numpy.isclose docs).
+    :type atol: float
+    :return: true if values in array are equally spaced else false
+    :rtype: bool
+    """
+    assert isinstance(arr, np.ndarray), f"Wrong data format. Expected numpy.ndarray got {type(arr)} instead."
+    assert arr.ndim == 1, f"Wrong data shape. Expected ndim == 1, got {arr.shape} instead."
+
+    diff = arr[1:] - arr[:-1]
+    median_step = np.median(diff)
+    if arr.shape[0] > 10:
+        if not all(np.isclose(median_step, diff[:10], rtol=rtol, atol=atol, equal_nan=False)):
+            return False, median_step
+
+    for idx in range(0, diff.shape[0], chunk):
+        stop = idx + chunk
+        if stop > diff.shape[0]:
+            stop = diff.shape[0]
+        if not all(np.isclose(median_step, diff[idx: stop], rtol=rtol, atol=atol, equal_nan=False)):
+            return False, median_step
+    return True, median_step
+
+
+def write_isf(arr_x, arr_y, filename, verbose=False):
+    """ Saves curve data to ISF file in Y format (PT_FMT == 'Y')
+    or XY format (PT_FMT == 'XY') depending on the X-data.
+
+    :param arr_x: X-values array
+    :type arr_x: np.ndarray
+    :param arr_y: Y-values array
+    :type arr_y: np.ndarray
+    :param filename: the full path to output file
+    :type filename: str
+    :param verbose: the level of output verbosity
+    :type verbose: bool
+    :return: nothing
+    :rtype: None
+    """
+    assert isinstance(arr_x, np.ndarray), f"Wrong x data format. Expected numpy.ndarray got {type(arr_x)} instead."
+    assert isinstance(arr_y, np.ndarray), f"Wrong y data format. Expected numpy.ndarray got {type(arr_y)} instead."
+    assert arr_x.ndim == 1, f"Wrong x data shape. Expected ndim == 1, got {arr_x.shape} instead."
+    assert arr_y.ndim == 1, f"Wrong y data shape. Expected ndim == 1, got {arr_y.shape} instead."
+    assert arr_x.shape[0] == arr_y.shape[
+        0], f"x data and y data has different number of points ({arr_x.shape[0]} and {arr_y.shape[0]})"
+    assert arr_x.dtype == arr_y.dtype, f"x and y data must have the same format. Got {arr_x.dtype} and {arr_y.dtype}"
+
+    is_equally_spaced, step = equally_spaced_values(arr_x)
+    if is_equally_spaced:
+        write_isf_yt(arr_y, arr_x[0], step, filename, verbose)
+    else:
+        write_isf_xy(arr_x, arr_y, filename, verbose)
+
+
 def write_isf_xy(arr_x, arr_y, filename, verbose=False):
-    """ Saves curve data to ISF file in new XY format.
+    """ Saves curve data to ISF file in new XY format (PT_FMT == 'XY').
 
     :param arr_x: X-values array
     :type arr_x: np.ndarray
@@ -353,11 +417,69 @@ def write_isf_xy(arr_x, arr_y, filename, verbose=False):
     assert arr_x.shape[0] == arr_y.shape[0], f"x data and y data has different number of points ({arr_x.shape[0]} and {arr_y.shape[0]})"
     assert arr_x.dtype == arr_y.dtype, f"x and y data must have the same format. Got {arr_x.dtype} and {arr_y.dtype}"
 
+    head = get_blank_head()
+    head["PT_FMT"] = "XY"
+    head["WFID"] += "XY-curve"
+    head["NR_PT"] = arr_y.shape[0] * 2
+    head["BYT_OR"], head["BN_FMT"], head["BYT_NR"] = get_isf_fmt(arr_y.dtype)
+    head["BIT_NR"] = head["BYT_NR"] * 8
+
+    head_str = head_to_str(head)
+    with open(filename, "w") as fid:
+        fid.write(head_str)
+    with open(filename, "ab") as fid:
+        fid.write(arr_x.tobytes())
+        fid.write(arr_y.tobytes())
+    if verbose:
+        print(f"Saved ISF (XY-type) as '{filename}'")
+
+
+def write_isf_yt(arr_y, t_start, t_step, filename, verbose=False):
+    """ Saves curve data to ISF file in Y format (PT_FMT == 'Y').
+
+    :param arr_y: Y-values array
+    :type arr_y: np.ndarray
+    :param t_start: the first point time value
+    :type t_start: float
+    :param t_step: the step of "time column"
+    :type t_step: float
+    :param filename: the full path to output file
+    :type filename: str
+    :param verbose: the level of output verbosity
+    :type verbose: bool
+    :return: nothing
+    :rtype: None
+    """
+    assert isinstance(arr_y, np.ndarray), f"Wrong y data format. Expected numpy.ndarray got {type(arr_y)} instead."
+    assert arr_y.ndim == 1, f"Wrong y data shape. Expected ndim == 1, got {arr_y.shape} instead."
+
+    head = get_blank_head()
+    head["PT_FMT"] = "Y"
+    head["WFID"] += "Y-curve"
+    head["NR_PT"] = arr_y.shape[0]
+    head["BYT_OR"], head["BN_FMT"], head["BYT_NR"] = get_isf_fmt(arr_y.dtype)
+    head["BIT_NR"] = head["BYT_NR"] * 8
+
+    head["XZERO"] = t_start
+    head["XINCR"] = t_step
+    head["PT_OFF"] = 0.0
+
+    head_str = head_to_str(head)
+    with open(filename, "w") as fid:
+        fid.write(head_str)
+    with open(filename, "ab") as fid:
+        fid.write(arr_y.tobytes())
+    if verbose:
+        print(f"Saved ISF (Y-type) as '{filename}'")
+
+
+def get_blank_head():
+    """
+    Returns ISF file header in dict format filled with default values.
+    """
     head = dict()
     head["ENCDG"] = "BINARY"
-    head["WFID"] = "Python isf-converter-py XY-curve"
-    head["NR_PT"] = arr_y.shape[0] * 2
-    head["PT_FMT"] = "XY"
+    head["WFID"] = "Python isf-converter-py"
     head["XUNIT"] = "a.u."
     head["YUNIT"] = "a.u."
     head["VSCALE"] = 1.0E+0
@@ -371,25 +493,21 @@ def write_isf_xy(arr_x, arr_y, filename, verbose=False):
     head["SPAN"] = 0.0E+0
     head["REFLEVEL"] = 0.0E+0
 
-    head["BYT_OR"], head["BN_FMT"], head["BYT_NR"] = get_isf_fmt(arr_y.dtype)
-    head["BIT_NR"] = head["BYT_NR"] * 8
-
+    # data-specific parameters
     head["XZERO"] = 0.0
     head["XINCR"] = 1.0
     head["PT_OFF"] = 0.0
-
     head["YZERO"] = 0.0
     head["YMULT"] = 1.0
     head["YOFF"] = 0.0
+    head["PT_FMT"] = None
+    head["NR_PT"] = None
+    head["BYT_OR"] = None
+    head["BN_FMT"] = None
+    head["BYT_NR"] = None
+    head["BIT_NR"] = None
 
-    head_str = head_to_str(head)
-    with open(filename, "w") as fid:
-        fid.write(head_str)
-    with open(filename, "ab") as fid:
-        fid.write(arr_x.tobytes())
-        fid.write(arr_y.tobytes())
-    if verbose:
-        print(f"Saved as '{filename}'")
+    return head
 
 
 def head_to_str(head):
